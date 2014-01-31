@@ -1,0 +1,1 @@
+MOTD: Welcome to Game Dev Tycoon Chat Mod! Server version running: 0.4. Added in the last Release: MOTD, Join/Part messages, number of people online on join. Enjoy your game! ;)
