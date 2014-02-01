@@ -34,6 +34,47 @@ function htmlEntities(str) {
  
 // Array with some colors
 var colors = [ 'red', 'green', 'blue', 'magenta', 'purple', 'plum', 'orange', 'teal', 'navy', 'lime', 'maroon', 'lightsalmon', 'darkslateblue', 'greenyellow', 'aquamarine', 'olivedrab', 'orangered', 'firebrick', 'peru' ];
+
+
+/**
+ * Helper function for creating network readable objects from strings
+ */
+var ObjectifyString = (function(parText, parAuthor, parColor){
+
+	console.log(parText + " " + parAuthor + " " + parColor);
+	
+	return {
+            time: (new Date()).getTime(),
+            text: htmlEntities(parText),
+            author: parAuthor,
+            color: parColor
+        };
+    
+    
+});
+
+
+/**
+ * This function will read the MOTD from a text file called MOTD.txt
+ */
+var ChangeMotd = (function(){
+
+	var fs = require('fs');
+	fs.readFile( __dirname + '/MOTD.txt', function (err, data) {
+		if (err) {
+			console.log("Unable to load MOTD.txt file: " + err); 
+		}
+		MOTDString = data.toString();
+		console.log("MOTD Loaded succesfully: " + data.toString());
+	});
+
+})
+
+
+
+
+
+
  
 /**
  * HTTP server
@@ -69,14 +110,15 @@ wsServer.on('request', function(request) {
     var userColor = false;
  
     console.log((new Date()) + ' Connection accepted.');
-    
-    // Send MOTD
-    //connection.sendUTF(JSON.stringify( { type: 'system_message', data: MOTDString} ));
  
     // send back chat history
     if (history.length > 0) {
         connection.sendUTF(JSON.stringify( { type: 'history', data: history} ));
     }
+    
+    
+    // Send MOTD
+    connection.sendUTF(JSON.stringify( { type: 'system_message', data: ObjectifyString(MOTDString,null,null)} ));
      
     // user sent some message
     connection.on('message', function(message) {
@@ -95,10 +137,13 @@ wsServer.on('request', function(request) {
                             + ' with ' + userColor + ' color.');
                 
                 // Broadcast Join Message
-                var json = JSON.stringify({ type:'system_message', data: "New user has joined the chat: " + userName });
-
+                var json = JSON.stringify({ type:'message', data: ObjectifyString("just joined the chat",userName.toString(),userColor.toString()) });
+                console.log("just joined the chat " + userName.toString() + " " + userColor.toString());
+                var CountMessage = JSON.stringify({ type:'system_message', data: ObjectifyString("users online: " + clients.length.toString(),null,null)});
+                
                 for (var i=0; i < clients.length; i++) {
                     clients[i].sendUTF(json);
+                    clients[i].sendUTF(CountMessage);
                 }
                 
                 
@@ -148,37 +193,18 @@ wsServer.on('request', function(request) {
             clients.splice(index, 1);
             
             // Broadcast Part Message
-            var json = JSON.stringify({ type:'system_message', data: "user " + userName  + " has left the chat"});
+            var LeaveMessage = JSON.stringify({ type:'system_message', data: ObjectifyString("user " + userName  + " has left the chat",null,null)});
+            var CountMessage = JSON.stringify({ type:'system_message', data: ObjectifyString("users online: " + clients.length.toString(),null,null)});
 
             for (var i=0; i < clients.length; i++) {
-                clients[i].sendUTF(json);
+                clients[i].sendUTF(LeaveMessage);
+                clients[i].sendUTF(CountMessage);
             }
         }
     });
-    
-    
-    SendMessage = (function(author, Color, text, message_type, broadcast){
-    	
-        // we want to keep history of all sent messages
-        var obj = {
-            time: (new Date()).getTime(),
-            text: htmlEntities(text),
-            author: author,
-            color: Color
-        };
-        history.push(obj);
-        history = history.slice(-100);
-        
-        // broadcast message to all connected clients
-        var json = JSON.stringify({ type:message_type, data: obj });
 
-        if (broadcast || broadcast !=1){
-        	
-        }
-        for (var i=0; i < clients.length; i++) {
-            clients[i].sendUTF(json);
-        }
-    	
-    });
- 
+    // Server Customized Initalization
+    
+    ChangeMotd();
+    
 });
